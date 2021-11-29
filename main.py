@@ -1,103 +1,62 @@
-import bs4
+from typing import Text
+from bs4 import BeautifulSoup
+from bs4.element import SoupStrainer
 import requests
-import logging
-import collections
-import csv
+from requests.api import request
+import xml.etree.ElementTree as ET
+import re
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger('wb')
+root = ET.Element('Товары')
 
+lkd_color = ['Информация отсутствует']
 
-ParserResult = collections.namedtuple(
-    'ParseResult',
-    (
-        'url',
-        'goods_name',
-        'price',
-    ),
-)
+oppp = ["Описание отсутствует!"]
 
-HEADERS = (
-    'Ссылка',
-    'Наименование',
-    'Цена',
-)
+all_links_index = []
+dict = {}
 
+bad_chars = ['<a>', '</a>', '<u>', '</u>', '<strong>', '<b>']
 
-class Client:
+url = "https://voronezh.brick24.ru/catalog/brick/"
+domen = 'https://voronezh.brick24.ru'
+r = requests.get(url)
+soup = BeautifulSoup(r.text, 'lxml')
 
-    def __init__(self):
-        self.session = requests.Session()
-        self.session.headers = {
+ik = 0
+id = 1
 
+massiv_item_links = []
+all_link_items_products = soup.find('div', class_='catalog__items-items').find_all('div', class_='catalog__item-block')
+for link_id_item in all_link_items_products:
+    fin_all_links_item_products = domen + link_id_item.find('a').get('href')
+    massiv_item_links.append(fin_all_links_item_products)
 
-        'user-agent': 'Mozilla / 5.0(Windows NT 10.0; Win64; x64) AppleWebKit / 537.36(KHTML, like Gecko) Chrome / 96.0.4664.45 Safari / 537.36'
-        }
+for link_index in massiv_item_links:
 
-        self.result = []
+    req = requests.get(link_index)
+    src = req.text
+    soup = BeautifulSoup(src, "lxml")
 
-    def load_page(self):
-        url = 'https://voronezh.brick24.ru/catalog/brick/filter/clear/apply/?PAGEN_31=2&SIZEN_31=21'
-        res = self.session.get(url=url)
-        res.raise_for_status()
-        return res.text
+    massive_h1 = []
+    dict[id] = {}
 
-    def parse_page(self, text: str):
-        soup = bs4.BeautifulSoup(text, 'lxml')
-        container = soup.select('div.catalog__item-block.item-block.js-catalog-item.item-block--in-stock')
-        for block in container:
-            self.parse_block(block=block)
+    try:
+        items_pages_name_detail = soup.find('h1', class_='item-block__name').text
+        rem_items_pages_name_detail = re.sub("[$|@|&|#|_|-|'|”|“|\|/|]", '', items_pages_name_detail)
+        massive_h1.append(items_pages_name_detail)
+    except Exception as ex:
+        pass
 
-    def parse_block(self, block):
-        # logger.info(block)
-        # logger.info('=' * 100)
+    all_massive_img = []
+    try:
+        cart_img_link = soup.find_all('div', class_='detail__info')
+        all_massive_img = []
+        for all_cart_ijm in cart_img_link:
+            f_all_cart = all_cart_ijm.find_all('div', class_='detail__specific-row')
+            detail_img_link = f_all_cart
+        for i in f_all_cart:
+            print(i.get_text(strip=True))
 
-        url_block = block.select_one('a')
-        if not url_block:
-            logger.error('no url')
-            return
-
-        url = url_block.get('href')
-        if not url:
-            logger.error('no href')
-            return
-
-        name_block = block.select_one('div.item-block__name')
-        if not name_block:
-            logger.error('no name on {url}')
-            return
-
-        price_block = block.select_one('div.item-block__price')
-        if not price_block:
-            logger.error('no price on {url}')
-            return
-
-
-
-        self.result.append(ParserResult(
-            url=url,
-            goods_name=name_block,
-            price=price_block,
-        ))
-
-        logger.debug('%s, %s, %s', url, name_block, price_block)
-        logger.debug('-' * 100)
-
-    def save_results(self):
-        path = 'test.csv'
-        with open(path, 'w', newline='', encoding="utf-8") as f:
-            writer = csv.writer(f, quoting=csv.QUOTE_MINIMAL)
-            writer.writerow(HEADERS)
-            for item in self.result:
-                writer.writerow(item)
-
-
-    def run(self):
-        text = self.load_page()
-        self.parse_page(text=text)
-        logger.info(f'получили {len(self.result)} элемент')
-        self.save_results()
-
-if __name__ == '__main__':
-    parser = Client()
-    parser.run()
+            all_massive_img.append(detail_img_link)
+    except Exception as e:
+        pass
