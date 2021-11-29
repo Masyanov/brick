@@ -84,7 +84,7 @@ class Client:
         logger.debug('-' * 100)
 
     def save_results(self):
-        path = '/Users/Masyanov/PycharmProjects/django/brick/test.csv'
+        path = 'test.csv'
         with open(path, 'w', newline='', encoding="utf-8") as f:
             writer = csv.writer(f, quoting=csv.QUOTE_MINIMAL)
             writer.writerow(HEADERS)
